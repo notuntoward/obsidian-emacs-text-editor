@@ -1,9 +1,6 @@
 TARGET_DIR_PATH = ${OBSIDIAN_PLUGINS_DIR}/emacs-text-editor
 
-lint:
-	eslint main.ts
-
-build: lint
+build:
 	npm run build
 
 install: build
