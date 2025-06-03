@@ -25,13 +25,14 @@ const insertableSpecialKeys = [
 ];
 
 function isEventInterruptSelection(e: KeyboardEvent): boolean {
+	let withKeyModifier = e.ctrlKey || e.altKey;
 	return (
 		e.code == "Backspace" ||
 		e.code == "Delete" ||
-		Boolean(e.code.match(/^Key[A-Z]$/)) ||
-		Boolean(e.code.match(/^Digit[0-9]$/)) ||
-		Boolean(e.code.match(/^Numpad[0-9]$/)) ||
-		insertableSpecialKeys.includes(e.code)
+		(Boolean(e.code.match(/^Key[A-Z]$/)) && !withKeyModifier) ||
+		(Boolean(e.code.match(/^Digit[0-9]$/)) && !withKeyModifier) ||
+		(Boolean(e.code.match(/^Numpad[0-9]$/)) && !withKeyModifier) ||
+		(insertableSpecialKeys.includes(e.code) && !withKeyModifier)
 	);
 }
 
