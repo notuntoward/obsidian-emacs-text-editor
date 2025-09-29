@@ -58,11 +58,19 @@ make uninstall
 | Ctrl + y                | Yank                       | Paste (Yank) a cut or copied a region |
 | Alt + x                 | Open command palette       | Open command palette |
 
+## Key Repeat
+
+Movement keys repeat when held down, just like arrow keys:
+
+- **Character movement:** Ctrl+F, Ctrl+B
+- **Line movement:** Ctrl+N, Ctrl+P  
+- **Word movement:** Alt+F, Alt+B
+
+The repeat timing can be customized in the plugin settings under *Settings → Community plugins → Emacs text editor*. You can adjust the initial delay, repeat interval, or use quick presets (Slow/Medium/Fast).
+
 ## Known issues
 
 1. Move to beginning of line command (Ctrl + a) conflicts with select all action. Solution: Use Home/End + Shift.
 2. Conflicts with existing hotkeys. Solution: use additional plugin for custom bindings, for example https://github.com/tgrosinger/leader-hotkeys-obsidian
 3. Absent support of "kill-ring". Solution: use plugin https://github.com/Karakaz/obsidian-paste-from-history with `Alt + y` keybinding
 4. Absent support of scroll-up/scroll-down commands. [Solution is not found](https://github.com/Klojer/obsidian-emacs-text-editor/issues/1)
-5. Absent support of holding shortcuts. [Solution is not found](https://github.com/Klojer/obsidian-emacs-text-editor/issues/2)
-
