@@ -329,103 +329,66 @@ export default class EmacsTextEditorPlugin extends Plugin {
 
 		// Case conversion commands from emacs-case
 		// Upcase word (with default hotkey Alt+u)
+		// Helper for word case transformation
+		const transformWordAtCursor = (
+			editor: Editor,
+			transform: (word: string) => string
+		) => {
+			const cursor = editor.getCursor();
+			const line = editor.getLine(cursor.line);
+			let ch = cursor.ch;
+
+			// Find word boundaries
+			while (ch < line.length && !/\w/.test(line[ch])) {
+				ch++;
+			}
+			const start = ch;
+			while (ch < line.length && /\w/.test(line[ch])) {
+				ch++;
+			}
+			const end = ch;
+
+			if (start < end) {
+				const word = line.substring(start, end);
+				const newWord = transform(word);
+				const range = {
+					from: { line: cursor.line, ch: start },
+					to: { line: cursor.line, ch: end }
+				};
+				editor.replaceRange(newWord, range.from, range.to);
+				editor.setCursor(cursor.line, end);
+			}
+		};
+
 		this.addCommand({
 			id: 'upcase-word',
 			name: 'Upcase word',
 			hotkeys: [{ modifiers: ['Alt'], key: 'u' }],
 			editorCallback: async (editor: Editor, _: MarkdownView) => {
-				const cursor = editor.getCursor();
-				const line = editor.getLine(cursor.line);
-				let ch = cursor.ch;
-
-				// Find word boundaries
-				while (ch < line.length && !/\w/.test(line[ch])) {
-					ch++;
-				}
-				const start = ch;
-				while (ch < line.length && /\w/.test(line[ch])) {
-					ch++;
-				}
-				const end = ch;
-
-				if (start < end) {
-					const word = line.substring(start, end);
-					const uppercaseWord = word.toUpperCase();
-					const range = {
-						from: { line: cursor.line, ch: start },
-						to: { line: cursor.line, ch: end }
-					};
-					editor.replaceRange(uppercaseWord, range.from, range.to);
-					editor.setCursor(cursor.line, end);
-				}
+				transformWordAtCursor(editor, word => word.toUpperCase());
 			}
 		});
 
-		// Downcase word (with default hotkey Alt+l)
 		this.addCommand({
 			id: 'downcase-word',
 			name: 'Downcase word',
 			hotkeys: [{ modifiers: ['Alt'], key: 'l' }],
 			editorCallback: async (editor: Editor, _: MarkdownView) => {
-				const cursor = editor.getCursor();
-				const line = editor.getLine(cursor.line);
-				let ch = cursor.ch;
-
-				// Find word boundaries
-				while (ch < line.length && !/\w/.test(line[ch])) {
-					ch++;
-				}
-				const start = ch;
-				while (ch < line.length && /\w/.test(line[ch])) {
-					ch++;
-				}
-				const end = ch;
-
-				if (start < end) {
-					const word = line.substring(start, end);
-					const lowercaseWord = word.toLowerCase();
-					const range = {
-						from: { line: cursor.line, ch: start },
-						to: { line: cursor.line, ch: end }
-					};
-					editor.replaceRange(lowercaseWord, range.from, range.to);
-					editor.setCursor(cursor.line, end);
-				}
+				transformWordAtCursor(editor, word => word.toLowerCase());
 			}
 		});
 
-		// Capitalize word (with default hotkey Alt+c)
 		this.addCommand({
 			id: 'capitalize-word',
 			name: 'Capitalize word',
 			hotkeys: [{ modifiers: ['Alt'], key: 'c' }],
 			editorCallback: async (editor: Editor, _: MarkdownView) => {
-				const cursor = editor.getCursor();
-				const line = editor.getLine(cursor.line);
-				let ch = cursor.ch;
-
-				// Find word boundaries
-				while (ch < line.length && !/\w/.test(line[ch])) {
-					ch++;
-				}
-				const start = ch;
-				while (ch < line.length && /\w/.test(line[ch])) {
-					ch++;
-				}
-				const end = ch;
-
-				if (start < end) {
-					const word = line.substring(start, end);
-					const capitalizedWord = word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
-					const range = {
-						from: { line: cursor.line, ch: start },
-						to: { line: cursor.line, ch: end }
-					};
-					editor.replaceRange(capitalizedWord, range.from, range.to);
-					editor.setCursor(cursor.line, end);
-				}
+				transformWordAtCursor(editor, word =>
+					word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+				);
 			}
 		});
+
 
 		// Upcase region (no default hotkey)
 		this.addCommand({
