@@ -316,6 +316,213 @@ export default class EmacsTextEditorPlugin extends Plugin {
 				});
 			},
 		});
+
+		// open command palette
+		this.addCommand({
+			id: 'execute-extended-command',
+			name: 'execute extended command',
+			callback: () => {
+				// @ts-ignore
+				this.app.commands.executecommandbyid('command-palette:open');
+			}
+		});
+
+		// Case conversion commands from emacs-case
+		// Upcase word (with default hotkey Alt+u)
+		this.addCommand({
+			id: 'upcase-word',
+			name: 'Upcase word',
+			hotkeys: [{ modifiers: ['Alt'], key: 'u' }],
+			editorCallback: async (editor: Editor, _: MarkdownView) => {
+				const cursor = editor.getCursor();
+				const line = editor.getLine(cursor.line);
+				let ch = cursor.ch;
+
+				// Find word boundaries
+				while (ch < line.length && !/\w/.test(line[ch])) {
+					ch++;
+				}
+				const start = ch;
+				while (ch < line.length && /\w/.test(line[ch])) {
+					ch++;
+				}
+				const end = ch;
+
+				if (start < end) {
+					const word = line.substring(start, end);
+					const uppercaseWord = word.toUpperCase();
+					const range = {
+						from: { line: cursor.line, ch: start },
+						to: { line: cursor.line, ch: end }
+					};
+					editor.replaceRange(uppercaseWord, range.from, range.to);
+					editor.setCursor(cursor.line, end);
+				}
+			}
+		});
+
+		// Downcase word (with default hotkey Alt+l)
+		this.addCommand({
+			id: 'downcase-word',
+			name: 'Downcase word',
+			hotkeys: [{ modifiers: ['Alt'], key: 'l' }],
+			editorCallback: async (editor: Editor, _: MarkdownView) => {
+				const cursor = editor.getCursor();
+				const line = editor.getLine(cursor.line);
+				let ch = cursor.ch;
+
+				// Find word boundaries
+				while (ch < line.length && !/\w/.test(line[ch])) {
+					ch++;
+				}
+				const start = ch;
+				while (ch < line.length && /\w/.test(line[ch])) {
+					ch++;
+				}
+				const end = ch;
+
+				if (start < end) {
+					const word = line.substring(start, end);
+					const lowercaseWord = word.toLowerCase();
+					const range = {
+						from: { line: cursor.line, ch: start },
+						to: { line: cursor.line, ch: end }
+					};
+					editor.replaceRange(lowercaseWord, range.from, range.to);
+					editor.setCursor(cursor.line, end);
+				}
+			}
+		});
+
+		// Capitalize word (with default hotkey Alt+c)
+		this.addCommand({
+			id: 'capitalize-word',
+			name: 'Capitalize word',
+			hotkeys: [{ modifiers: ['Alt'], key: 'c' }],
+			editorCallback: async (editor: Editor, _: MarkdownView) => {
+				const cursor = editor.getCursor();
+				const line = editor.getLine(cursor.line);
+				let ch = cursor.ch;
+
+				// Find word boundaries
+				while (ch < line.length && !/\w/.test(line[ch])) {
+					ch++;
+				}
+				const start = ch;
+				while (ch < line.length && /\w/.test(line[ch])) {
+					ch++;
+				}
+				const end = ch;
+
+				if (start < end) {
+					const word = line.substring(start, end);
+					const capitalizedWord = word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+					const range = {
+						from: { line: cursor.line, ch: start },
+						to: { line: cursor.line, ch: end }
+					};
+					editor.replaceRange(capitalizedWord, range.from, range.to);
+					editor.setCursor(cursor.line, end);
+				}
+			}
+		});
+
+		// Upcase region (no default hotkey)
+		this.addCommand({
+			id: 'upcase-region',
+			name: 'Upcase region',
+			editorCallback: async (editor: Editor, _: MarkdownView) => {
+				const selection = editor.getSelection();
+				if (selection) {
+					const uppercaseSelection = selection.toUpperCase();
+					editor.replaceSelection(uppercaseSelection);
+				}
+			}
+		});
+
+		// Downcase region (no default hotkey)
+		this.addCommand({
+			id: 'downcase-region',
+			name: 'Downcase region',
+			editorCallback: async (editor: Editor, _: MarkdownView) => {
+				const selection = editor.getSelection();
+				if (selection) {
+					const lowercaseSelection = selection.toLowerCase();
+					editor.replaceSelection(lowercaseSelection);
+				}
+			}
+		});
+
+		// Capitalize region (no default hotkey)
+		this.addCommand({
+			id: 'capitalize-region',
+			name: 'Capitalize region',
+			editorCallback: async (editor: Editor, _: MarkdownView) => {
+				const selection = editor.getSelection();
+				if (selection) {
+					const words = selection.split(/\b/);
+					const capitalizedWords = words.map(word => {
+						if (/\w/.test(word)) {
+							return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+						}
+						return word;
+					});
+					const capitalizedSelection = capitalizedWords.join('');
+					editor.replaceSelection(capitalizedSelection);
+				}
+			}
+		});
+
+		// Toggle case (no default hotkey)
+		this.addCommand({
+			id: 'toggle-case',
+			name: 'Toggle case',
+			editorCallback: async (editor: Editor, _: MarkdownView) => {
+				const selection = editor.getSelection();
+				if (selection) {
+					const toggledSelection = selection.split('').map(char => {
+						if (char === char.toUpperCase()) {
+							return char.toLowerCase();
+						} else {
+							return char.toUpperCase();
+						}
+					}).join('');
+					editor.replaceSelection(toggledSelection);
+				} else {
+					// Toggle case of word at cursor
+					const cursor = editor.getCursor();
+					const line = editor.getLine(cursor.line);
+					let ch = cursor.ch;
+
+					// Find word boundaries
+					while (ch < line.length && !/\w/.test(line[ch])) {
+						ch++;
+					}
+					const start = ch;
+					while (ch < line.length && /\w/.test(line[ch])) {
+						ch++;
+					}
+					const end = ch;
+
+					if (start < end) {
+						const word = line.substring(start, end);
+						const toggledWord = word.split('').map(char => {
+							if (char === char.toUpperCase()) {
+								return char.toLowerCase();
+							} else {
+								return char.toUpperCase();
+							}
+						}).join('');
+						const range = {
+							from: { line: cursor.line, ch: start },
+							to: { line: cursor.line, ch: end }
+						};
+						editor.replaceRange(toggledWord, range.from, range.to);
+						editor.setCursor(cursor.line, end);
+					}
+				}
+			}
+		});
 	}
 
 	onunload() {
