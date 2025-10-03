@@ -378,14 +378,15 @@ export default class EmacsTextEditorPlugin extends Plugin {
 			}
 		});
 
+		const capitalizeWord = (word: string): string => 
+    		word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+
 		this.addCommand({
 			id: 'capitalize-word',
 			name: 'Capitalize word',
 			hotkeys: [{ modifiers: ['Alt'], key: 'c' }],
 			editorCallback: async (editor: Editor, _: MarkdownView) => {
-				transformWordAtCursor(editor, word =>
-					word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
-				);
+				transformWordAtCursor(editor, capitalizeWord);
 			}
 		});
 
@@ -426,7 +427,7 @@ export default class EmacsTextEditorPlugin extends Plugin {
 					const words = selection.split(/\b/);
 					const capitalizedWords = words.map(word => {
 						if (/\w/.test(word)) {
-							return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+							return capitalizeWord(word)
 						}
 						return word;
 					});
@@ -437,52 +438,28 @@ export default class EmacsTextEditorPlugin extends Plugin {
 		});
 
 		// Toggle case (no default hotkey)
+
+		const toggleCase = (text: string): string => {
+			return text.split('').map(char => {
+				if (char === char.toUpperCase()) {
+					return char.toLowerCase();
+				} else {
+					return char.toUpperCase(); 
+				}
+			}).join('');
+		};	
+
+		// this works on both region and word at cursor
 		this.addCommand({
 			id: 'toggle-case',
 			name: 'Toggle case',
 			editorCallback: async (editor: Editor, _: MarkdownView) => {
 				const selection = editor.getSelection();
 				if (selection) {
-					const toggledSelection = selection.split('').map(char => {
-						if (char === char.toUpperCase()) {
-							return char.toLowerCase();
-						} else {
-							return char.toUpperCase();
-						}
-					}).join('');
+					const toggledSelection = toggleCase(selection);
 					editor.replaceSelection(toggledSelection);
 				} else {
-					// Toggle case of word at cursor
-					const cursor = editor.getCursor();
-					const line = editor.getLine(cursor.line);
-					let ch = cursor.ch;
-
-					// Find word boundaries
-					while (ch < line.length && !/\w/.test(line[ch])) {
-						ch++;
-					}
-					const start = ch;
-					while (ch < line.length && /\w/.test(line[ch])) {
-						ch++;
-					}
-					const end = ch;
-
-					if (start < end) {
-						const word = line.substring(start, end);
-						const toggledWord = word.split('').map(char => {
-							if (char === char.toUpperCase()) {
-								return char.toLowerCase();
-							} else {
-								return char.toUpperCase();
-							}
-						}).join('');
-						const range = {
-							from: { line: cursor.line, ch: start },
-							to: { line: cursor.line, ch: end }
-						};
-						editor.replaceRange(toggledWord, range.from, range.to);
-						editor.setCursor(cursor.line, end);
-					}
+					transformWordAtCursor(editor, toggleCase);
 				}
 			}
 		});
