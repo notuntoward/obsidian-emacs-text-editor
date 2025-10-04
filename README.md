@@ -56,14 +56,16 @@ make uninstall
 | Ctrl + Space            | Set mark command           | Mark the beginning of a selection |
 | Ctrl + /                | Undo                       | Undo |
 | Ctrl + y                | Yank                       | Paste (Yank) a cut or copied a region |
-| Alt + x                 | Open command palette       | Open command palette |
-| Alt + c                 | Capitalize word            | Capitalize first letter of next word, lowercase rest, advance cursor |
-| Alt + u                 | Uppercase word             | Make entire next word uppercase, advance cursor |
-| Alt + l                 | Lowercase word             | Make entire next word lowercase, advance cursor |
-| (configurable)          | Uppercase region           | Make entire selected region uppercase |
-| (configurable)          | Lowercase region           | Make entire selected region lowercase |
-| (configurable)          | Capitalize region          | Capitalize each word in selected region |
-| (configurable)          | Toggle case                | Toggle case of each character in selection or word |
+| Alt + u                 | Upcase word                | Make entire next word uppercase, advance cursor |
+| Alt + l                 | Downcase word              | Make entire next word lowercase, advance cursor |
+| Alt + c                 | Capitalize word            | Capitalize next word or rest of current word, advance cursor |
+| (not configured)        | Upcase region              | Make entire selected region uppercase |
+| (not configured)        | Downcase region            | Make entire selected region lowercase |
+| (not configured)        | Capitalize region          | Capitalize each word in selected region |
+| (not configured)        | Upcase dwim                | Uppercase selection if selection exists, else word |
+| (not configured)        | Downcase dwim              | Lowercase selection if selection exists, else word |
+| (not configured)        | Capitalize dwim            | Capitalize selection if selection exists, else word |
+
 
 ## Known issues
 

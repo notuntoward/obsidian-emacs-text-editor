@@ -317,19 +317,8 @@ export default class EmacsTextEditorPlugin extends Plugin {
 			},
 		});
 
-		// open command palette
-		this.addCommand({
-			id: 'execute-extended-command',
-			name: 'execute extended command',
-			callback: () => {
-				// @ts-ignore
-				this.app.commands.executecommandbyid('command-palette:open');
-			}
-		});
+		// Word commands work on words to right of cursor, or if in word, starts there
 
-		// Case conversion commands from emacs-case
-		// Upcase word (with default hotkey Alt+u)
-		// Helper for word case transformation
 		const transformWordAtCursor = (
 			editor: Editor,
 			transform: (word: string) => string
@@ -378,7 +367,7 @@ export default class EmacsTextEditorPlugin extends Plugin {
 			}
 		});
 
-		const capitalizeWord = (word: string): string => 
+		const capitalizeOneWord = (word: string): string => 
     		word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
 
 		this.addCommand({
@@ -386,81 +375,93 @@ export default class EmacsTextEditorPlugin extends Plugin {
 			name: 'Capitalize word',
 			hotkeys: [{ modifiers: ['Alt'], key: 'c' }],
 			editorCallback: async (editor: Editor, _: MarkdownView) => {
-				transformWordAtCursor(editor, capitalizeWord);
+				transformWordAtCursor(editor, capitalizeOneWord);
 			}
 		});
 
+		// Region commands work on regions, do nothing if no selection
 
-		// Upcase region (no default hotkey)
+		const transformSelection = (
+			editor: Editor,
+			transform: (word: string) => string
+		) => {
+			const selection = editor.getSelection();
+			if (selection) {
+				const transformedSelection = transform(selection);
+				editor.replaceSelection(transformedSelection);
+			}
+		};
+
 		this.addCommand({
 			id: 'upcase-region',
 			name: 'Upcase region',
 			editorCallback: async (editor: Editor, _: MarkdownView) => {
-				const selection = editor.getSelection();
-				if (selection) {
-					const uppercaseSelection = selection.toUpperCase();
-					editor.replaceSelection(uppercaseSelection);
-				}
+				transformSelection(editor, word => word.toUpperCase());
 			}
 		});
 
-		// Downcase region (no default hotkey)
 		this.addCommand({
 			id: 'downcase-region',
 			name: 'Downcase region',
 			editorCallback: async (editor: Editor, _: MarkdownView) => {
-				const selection = editor.getSelection();
-				if (selection) {
-					const lowercaseSelection = selection.toLowerCase();
-					editor.replaceSelection(lowercaseSelection);
-				}
+				transformSelection(editor, word => word.toLowerCase());
 			}
 		});
 
-		// Capitalize region (no default hotkey)
+		const capitalizeWords = (selection: string): string => {
+			const words = selection.split(/\b/);
+			const capitalizedWords = words.map(word => {
+				if (/\w/.test(word)) {
+					return capitalizeOneWord(word);
+				}
+				return word;
+			});
+			return capitalizedWords.join('');
+		}
+
 		this.addCommand({
 			id: 'capitalize-region',
 			name: 'Capitalize region',
 			editorCallback: async (editor: Editor, _: MarkdownView) => {
-				const selection = editor.getSelection();
-				if (selection) {
-					const words = selection.split(/\b/);
-					const capitalizedWords = words.map(word => {
-						if (/\w/.test(word)) {
-							return capitalizeWord(word)
-						}
-						return word;
-					});
-					const capitalizedSelection = capitalizedWords.join('');
-					editor.replaceSelection(capitalizedSelection);
-				}
+				transformSelection(editor, capitalizeWords);
 			}
 		});
 
-		// Toggle case (no default hotkey)
+		// DWIM commands works on word, or if active selection, a region
 
-		const toggleCase = (text: string): string => {
-			return text.split('').map(char => {
-				if (char === char.toUpperCase()) {
-					return char.toLowerCase();
-				} else {
-					return char.toUpperCase(); 
-				}
-			}).join('');
-		};	
+		const transformDWIM = (
+			editor: Editor,
+			transformOneWord: (word: string) => string,
+			transformWords?: (text: string) => string
+		) => {
+			if (editor.getSelection()) {
+				transformSelection(editor, transformWords ? transformWords : transformOneWord);
+			} else {
+				transformWordAtCursor(editor, transformOneWord);
+			}
+		};
 
-		// this works on both region and word at cursor
 		this.addCommand({
-			id: 'toggle-case',
-			name: 'Toggle case',
+			id: 'upcase-dwim',
+			name: 'Upcase dwim',
 			editorCallback: async (editor: Editor, _: MarkdownView) => {
-				const selection = editor.getSelection();
-				if (selection) {
-					const toggledSelection = toggleCase(selection);
-					editor.replaceSelection(toggledSelection);
-				} else {
-					transformWordAtCursor(editor, toggleCase);
-				}
+				transformDWIM(editor, word => word.toUpperCase());
+			}
+		});
+
+		this.addCommand({
+			id: 'downcase-dwim',
+			name: 'Downcase dwim',
+			editorCallback: async (editor: Editor, _: MarkdownView) => {
+				transformDWIM(editor, word => word.toLowerCase());
+			}
+		});
+
+		this.addCommand({
+			id: 'capitalize-dwim',
+			name: 'Capitalize dwim',
+			editorCallback: async (editor: Editor, _: MarkdownView) => {
+				transformDWIM(editor, capitalizeOneWord, capitalizeWords);
 			}
 		});
 	}

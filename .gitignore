@@ -8,6 +8,10 @@
 # npm
 node_modules
 
+# copilot
+execute.html
+execute_files
+
 # Don't include the compiled main.js file in the repo.
 # They should be uploaded to GitHub releases instead.
 main.js
