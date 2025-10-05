@@ -333,7 +333,9 @@ export default class EmacsTextEditorPlugin extends Plugin {
 			id: 'upcase-region',
 			name: 'Upcase region',
 			editorCallback: async (editor: Editor, _: MarkdownView) => {
-				this.transformSelection(editor, word => word.toUpperCase());
+				this.withSelectionUpdate(editor, () => {
+					this.transformSelection(editor, word => word.toUpperCase());
+				});
 			}
 		});
 
@@ -341,7 +343,9 @@ export default class EmacsTextEditorPlugin extends Plugin {
 			id: 'downcase-region',
 			name: 'Downcase region',
 			editorCallback: async (editor: Editor, _: MarkdownView) => {
-				this.transformSelection(editor, word => word.toLowerCase());
+				this.withSelectionUpdate(editor, () => {
+					this.transformSelection(editor, word => word.toLowerCase());
+				});
 			}
 		});
 
@@ -349,7 +353,9 @@ export default class EmacsTextEditorPlugin extends Plugin {
 			id: 'capitalize-region',
 			name: 'Capitalize region',
 			editorCallback: async (editor: Editor, _: MarkdownView) => {
-				this.transformSelection(editor, capitalizeWords);
+				this.withSelectionUpdate(editor, () => {
+					this.transformSelection(editor, capitalizeWords);
+				});
 			}
 		});
 
@@ -567,10 +573,13 @@ export default class EmacsTextEditorPlugin extends Plugin {
 		transform: (word: string) => string
 	) {
 		const selection = editor.getSelection();
-		if (selection) {
-			const transformedSelection = transform(selection);
-			editor.replaceSelection(transformedSelection);
+		if (!selection) {
+			return;
 		}
+
+		const transformedSelection = transform(selection);
+		editor.replaceSelection(transformedSelection);
+		this.disableSelection(editor);
 	}
 
 	transformDWIM(
