@@ -41,6 +41,7 @@ export default class EmacsTextEditorPlugin extends Plugin {
 		this.addCommand({
 			id: "forward-char",
 			name: "Forward char",
+			hotkeys: [{ modifiers: ['Ctrl'], key: 'f' }],
 			editorCallback: (editor: Editor, _: MarkdownView) => {
 				this.withSelectionUpdate(editor, () => {
 					editor.exec("goRight");
@@ -51,6 +52,7 @@ export default class EmacsTextEditorPlugin extends Plugin {
 		this.addCommand({
 			id: "backward-char",
 			name: "Backward char",
+			hotkeys: [{ modifiers: ['Ctrl'], key: 'b' }],
 			editorCallback: (editor: Editor, _: MarkdownView) => {
 				this.withSelectionUpdate(editor, () => {
 					editor.exec("goLeft");
@@ -61,6 +63,7 @@ export default class EmacsTextEditorPlugin extends Plugin {
 		this.addCommand({
 			id: "next-line",
 			name: "Next line",
+			hotkeys: [{ modifiers: ['Ctrl'], key: 'n' }],
 			editorCallback: (editor: Editor, _: MarkdownView) => {
 				this.withSelectionUpdate(editor, () => {
 					editor.exec("goDown");
@@ -71,6 +74,7 @@ export default class EmacsTextEditorPlugin extends Plugin {
 		this.addCommand({
 			id: "previous-line",
 			name: "Previous line",
+			hotkeys: [{ modifiers: ['Ctrl'], key: 'p' }],
 			editorCallback: (editor: Editor, _: MarkdownView) => {
 				this.withSelectionUpdate(editor, () => {
 					editor.exec("goUp");
@@ -81,6 +85,7 @@ export default class EmacsTextEditorPlugin extends Plugin {
 		this.addCommand({
 			id: "forward-word",
 			name: "Forward word",
+			hotkeys: [{ modifiers: ['Alt'], key: 'f' }],
 			editorCallback: (editor: Editor, _: MarkdownView) => {
 				this.withSelectionUpdate(editor, () => {
 					editor.exec("goWordRight");
@@ -91,6 +96,7 @@ export default class EmacsTextEditorPlugin extends Plugin {
 		this.addCommand({
 			id: "backward-word",
 			name: "Backward word",
+			hotkeys: [{ modifiers: ['Alt'], key: 'b' }],
 			editorCallback: (editor: Editor, _: MarkdownView) => {
 				this.withSelectionUpdate(editor, () => {
 					editor.exec("goWordLeft");
@@ -101,6 +107,7 @@ export default class EmacsTextEditorPlugin extends Plugin {
 		this.addCommand({
 			id: "move-end-of-line",
 			name: "Move end of line",
+			hotkeys: [{ modifiers: ['Ctrl'], key: 'e' }],
 			editorCallback: (editor: Editor, _: MarkdownView) => {
 				this.withSelectionUpdate(editor, () => {
 					const cursor = editor.getCursor();
@@ -116,6 +123,7 @@ export default class EmacsTextEditorPlugin extends Plugin {
 		this.addCommand({
 			id: "move-beginning-of-line",
 			name: "Move cursor to beginning of line",
+			hotkeys: [{ modifiers: ['Ctrl'], key: 'a' }],
 			editorCallback: (editor: Editor, _: MarkdownView) => {
 				this.withSelectionUpdate(editor, () => {
 					const cursor = editor.getCursor();
@@ -127,6 +135,7 @@ export default class EmacsTextEditorPlugin extends Plugin {
 		this.addCommand({
 			id: "beginning-of-buffer",
 			name: "Beginning of buffer",
+			hotkeys: [{ modifiers: ['Alt', 'Shift'], key: ',' }],
 			editorCallback: (editor: Editor, _: MarkdownView) => {
 				this.withSelectionUpdate(editor, () => {
 					editor.exec("goStart");
@@ -137,6 +146,7 @@ export default class EmacsTextEditorPlugin extends Plugin {
 		this.addCommand({
 			id: "end-of-buffer",
 			name: "End of buffer",
+			hotkeys: [{ modifiers: ['Alt', 'Shift'], key: '.' }],
 			editorCallback: (editor: Editor, _: MarkdownView) => {
 				this.withSelectionUpdate(editor, () => {
 					editor.exec("goEnd");
@@ -147,6 +157,7 @@ export default class EmacsTextEditorPlugin extends Plugin {
 		this.addCommand({
 			id: "kill-line",
 			name: "Kill line",
+			hotkeys: [{ modifiers: ['Ctrl'], key: 'k' }],
 			editorCallback: (editor: Editor, _: MarkdownView) => {
 				this.disableSelection(editor);
 
@@ -168,6 +179,7 @@ export default class EmacsTextEditorPlugin extends Plugin {
 		this.addCommand({
 			id: "delete-char",
 			name: "Delete char",
+			hotkeys: [{ modifiers: ['Ctrl'], key: 'd' }],
 			editorCallback: (editor: Editor, _: MarkdownView) => {
 				this.disableSelection(editor);
 
@@ -180,6 +192,7 @@ export default class EmacsTextEditorPlugin extends Plugin {
 		this.addCommand({
 			id: "kill-word",
 			name: "Kill word",
+			hotkeys: [{ modifiers: ['Alt'], key: 'd' }],
 			editorCallback: (editor: Editor, _: MarkdownView) => {
 				this.withDeleteInText(editor, () => {
 					editor.exec("goWordRight");
@@ -190,6 +203,7 @@ export default class EmacsTextEditorPlugin extends Plugin {
 		this.addCommand({
 			id: "backward-kill-word",
 			name: "Backward kill word",
+			hotkeys: [{ modifiers: ['Alt'], key: 'Backspace' }],
 			editorCallback: (editor: Editor, _: MarkdownView) => {
 				this.withDeleteInText(editor, () => {
 					editor.exec("goWordLeft");
@@ -200,6 +214,7 @@ export default class EmacsTextEditorPlugin extends Plugin {
 		this.addCommand({
 			id: "kill-ring-save",
 			name: "Kill ring save",
+			hotkeys: [{ modifiers: ['Alt'], key: 'w' }],
 			editorCallback: (editor: Editor, _: MarkdownView) => {
 				this.putSelectionInClipboard(editor, CopyCut.Copy);
 			},
@@ -208,6 +223,7 @@ export default class EmacsTextEditorPlugin extends Plugin {
 		this.addCommand({
 			id: "kill-region",
 			name: "Kill region",
+			hotkeys: [{ modifiers: ['Ctrl'], key: 'w' }],
 			editorCallback: (editor: Editor, _: MarkdownView) => {
 				this.putSelectionInClipboard(editor, CopyCut.Cut);
 			},
@@ -216,6 +232,7 @@ export default class EmacsTextEditorPlugin extends Plugin {
 		this.addCommand({
 			id: "yank",
 			name: "Yank",
+			hotkeys: [{ modifiers: ['Ctrl'], key: 'y' }],
 			editorCallback: async (editor: Editor, _: MarkdownView) => {
 				const clipboardContent = await navigator.clipboard.readText();
 				const cursor = editor.getCursor();
@@ -238,6 +255,7 @@ export default class EmacsTextEditorPlugin extends Plugin {
 		this.addCommand({
 			id: "set-mark-command",
 			name: "Set mark command",
+			hotkeys: [{ modifiers: ['Ctrl'], key: 'Space' }],
 			editorCallback: (editor: Editor, _: MarkdownView) => {
 				if (this.pluginTriggerSelection) {
 					this.disableSelection(editor);
@@ -251,6 +269,7 @@ export default class EmacsTextEditorPlugin extends Plugin {
 		this.addCommand({
 			id: "keyboard-quit",
 			name: "Keyboard-quit",
+			hotkeys: [{ modifiers: ['Ctrl'], key: 'g' }],
 			editorCallback: (editor: Editor, _: MarkdownView) => {
 				this.disableSelection(editor);
 			},
@@ -259,6 +278,7 @@ export default class EmacsTextEditorPlugin extends Plugin {
 		this.addCommand({
 			id: "undo",
 			name: "Undo",
+			hotkeys: [{ modifiers: ['Ctrl'], key: '/' }],
 			editorCallback: (editor: Editor, _: MarkdownView) => {
 				editor.undo();
 			},
@@ -267,6 +287,7 @@ export default class EmacsTextEditorPlugin extends Plugin {
 		this.addCommand({
 			id: "redo",
 			name: "Redo",
+			hotkeys: [{ modifiers: ['Ctrl', 'Shift'], key: '-' }],
 			editorCallback: (editor: Editor, _: MarkdownView) => {
 				editor.redo();
 			},
@@ -275,6 +296,7 @@ export default class EmacsTextEditorPlugin extends Plugin {
 		this.addCommand({
 			id: "recenter-top-bottom",
 			name: "Recenter",
+			hotkeys: [{ modifiers: ['Ctrl'], key: 'l' }],
 			editorCallback: (editor: Editor, _: MarkdownView) => {
 				const cursor = editor.getCursor();
 				const range = {
@@ -288,6 +310,7 @@ export default class EmacsTextEditorPlugin extends Plugin {
 		this.addCommand({
 			id: "forward-paragraph",
 			name: "Forward paragraph",
+			hotkeys: [{ modifiers: ['Alt', 'Shift'], key: ']' }],
 			editorCallback: async (editor: Editor, _: MarkdownView) => {
 				this.withSelectionUpdate(editor, () => {
 					this.moveToNextParagraph(editor, Direction.Forward);
@@ -298,6 +321,7 @@ export default class EmacsTextEditorPlugin extends Plugin {
 		this.addCommand({
 			id: "backward-paragraph",
 			name: "Backward paragraph",
+			hotkeys: [{ modifiers: ['Alt', 'Shift'], key: '[' }],
 			editorCallback: async (editor: Editor, _: MarkdownView) => {
 				this.withSelectionUpdate(editor, () => {
 					this.moveToNextParagraph(editor, Direction.Backward);
