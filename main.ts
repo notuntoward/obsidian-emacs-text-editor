@@ -316,6 +316,81 @@ export default class EmacsTextEditorPlugin extends Plugin {
 				});
 			},
 		});
+
+		this.addCommand({
+			id: 'upcase-word',
+			name: 'Upcase word',
+			editorCallback: async (editor: Editor, _: MarkdownView) => {
+				transformWordAtCursor(editor, word => word.toUpperCase());
+			}
+		});
+
+		this.addCommand({
+			id: 'downcase-word',
+			name: 'Downcase word',
+			editorCallback: async (editor: Editor, _: MarkdownView) => {
+				transformWordAtCursor(editor, word => word.toLowerCase());
+			}
+		});
+
+		this.addCommand({
+			id: 'capitalize-word',
+			name: 'Capitalize word',
+			editorCallback: async (editor: Editor, _: MarkdownView) => {
+				transformWordAtCursor(editor, capitalizeOneWord);
+			}
+		});
+
+		this.addCommand({
+			id: 'upcase-region',
+			name: 'Upcase region',
+			editorCallback: async (editor: Editor, _: MarkdownView) => {
+				transformSelection(editor, word => word.toUpperCase());
+			}
+		});
+
+		this.addCommand({
+			id: 'downcase-region',
+			name: 'Downcase region',
+			editorCallback: async (editor: Editor, _: MarkdownView) => {
+				transformSelection(editor, word => word.toLowerCase());
+			}
+		});
+
+		this.addCommand({
+			id: 'capitalize-region',
+			name: 'Capitalize region',
+			editorCallback: async (editor: Editor, _: MarkdownView) => {
+				transformSelection(editor, capitalizeWords);
+			}
+		});
+
+		this.addCommand({
+			id: 'upcase-dwim',
+			name: 'Upcase dwim',
+			hotkeys: [{ modifiers: ['Alt'], key: 'u' }],
+			editorCallback: async (editor: Editor, _: MarkdownView) => {
+				transformDWIM(editor, word => word.toUpperCase());
+			}
+		});
+
+		this.addCommand({
+			id: 'downcase-dwim',
+			name: 'Downcase dwim',
+			hotkeys: [{ modifiers: ['Alt'], key: 'l' }],
+			editorCallback: async (editor: Editor, _: MarkdownView) => {
+				transformDWIM(editor, word => word.toLowerCase());
+			}
+		});
+
+		this.addCommand({
+			id: 'capitalize-dwim',
+			name: 'Capitalize dwim',
+			hotkeys: [{ modifiers: ['Alt'], key: 'c' }],
+			editorCallback: async (editor: Editor, _: MarkdownView) => {
+				transformDWIM(editor, capitalizeOneWord, capitalizeWords);
+			}
+		});
 	}
 
 	onunload() {
@@ -471,3 +546,68 @@ export default class EmacsTextEditorPlugin extends Plugin {
 		editor.setCursor(newPos);
 	}
 }
+
+const capitalizeOneWord = (word: string): string => 
+	word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+
+const capitalizeWords = (selection: string): string => {
+	const words = selection.split(/\b/);
+	const capitalizedWords = words.map(word => {
+		if (/\w/.test(word)) {
+			return capitalizeOneWord(word);
+		}
+		return word;
+	});
+	return capitalizedWords.join('');
+}
+
+const transformWordAtCursor = (
+	editor: Editor,
+	transform: (word: string) => string
+) => {
+	const cursor = editor.getCursor();
+	const line = editor.getLine(cursor.line);
+	let ch = cursor.ch;
+
+	// Find word boundaries
+	while (ch < line.length && !/\w/.test(line[ch])) {
+		ch++;
+	}
+	const start = ch;
+	while (ch < line.length && /\w/.test(line[ch])) {
+		ch++;
+	}
+	const end = ch;
+	
+	const word = line.substring(start, end);
+	const newWord = transform(word);
+	const range = {
+		from: { line: cursor.line, ch: start },
+		to: { line: cursor.line, ch: end }
+	};
+	editor.replaceRange(newWord, range.from, range.to);
+	editor.setCursor(cursor.line, end);
+};
+
+const transformSelection = (
+	editor: Editor,
+	transform: (word: string) => string
+) => {
+	const selection = editor.getSelection();
+	if (selection) {
+		const transformedSelection = transform(selection);
+		editor.replaceSelection(transformedSelection);
+	}
+};
+
+const transformDWIM = (
+	editor: Editor,
+	transformOneWord: (word: string) => string,
+	transformWords?: (text: string) => string
+) => {
+	if (editor.getSelection()) {
+		transformSelection(editor, transformWords ? transformWords : transformOneWord);
+	} else {
+		transformWordAtCursor(editor, transformOneWord);
+	}
+};

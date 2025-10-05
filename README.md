@@ -56,7 +56,17 @@ make uninstall
 | Ctrl + Space            | Set mark command           | Mark the beginning of a selection |
 | Ctrl + /                | Undo                       | Undo |
 | Ctrl + y                | Yank                       | Paste (Yank) a cut or copied a region |
+| (not configured)        | Upcase word                | Make entire next word uppercase, advance cursor |
+| (not configured)        | Downcase word              | Make entire next word lowercase, advance cursor |
+| (not configured)        | Capitalize word            | Capitalize next word or rest of current word, advance cursor |
+| (not configured)        | Upcase region              | Make entire selected region uppercase |
+| (not configured)        | Downcase region            | Make entire selected region lowercase |
+| (not configured)        | Capitalize region          | Capitalize each word in selected region |
+| Alt + u                 | Upcase dwim                | Uppercase selection if selection exists, else word |
+| Alt + l                 | Downcase dwim              | Lowercase selection if selection exists, else word |
+| Alt + c                 | Capitalize dwim            | Capitalize selection if selection exists, else word |
 | Alt + x                 | Open command palette       | Open command palette |
+
 
 ## Known issues
 
