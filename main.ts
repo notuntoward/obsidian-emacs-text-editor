@@ -24,18 +24,6 @@ const insertableSpecialKeys = [
 	"Equal",
 ];
 
-function isEventInterruptSelection(e: KeyboardEvent): boolean {
-	let withKeyModifier = e.ctrlKey || e.altKey;
-	return (
-		e.code == "Backspace" ||
-		e.code == "Delete" ||
-		(Boolean(e.code.match(/^Key[A-Z]$/)) && !withKeyModifier) ||
-		(Boolean(e.code.match(/^Digit[0-9]$/)) && !withKeyModifier) ||
-		(Boolean(e.code.match(/^Numpad[0-9]$/)) && !withKeyModifier) ||
-		(insertableSpecialKeys.includes(e.code) && !withKeyModifier)
-	);
-}
-
 export default class EmacsTextEditorPlugin extends Plugin {
 	pluginTriggerSelection = false;
 	disableSelectionWhenPossible = false;
@@ -321,7 +309,7 @@ export default class EmacsTextEditorPlugin extends Plugin {
 			id: 'upcase-word',
 			name: 'Upcase word',
 			editorCallback: async (editor: Editor, _: MarkdownView) => {
-				transformWordAtCursor(editor, word => word.toUpperCase());
+				this.transformWordAtCursor(editor, word => word.toUpperCase());
 			}
 		});
 
@@ -329,7 +317,7 @@ export default class EmacsTextEditorPlugin extends Plugin {
 			id: 'downcase-word',
 			name: 'Downcase word',
 			editorCallback: async (editor: Editor, _: MarkdownView) => {
-				transformWordAtCursor(editor, word => word.toLowerCase());
+				this.transformWordAtCursor(editor, word => word.toLowerCase());
 			}
 		});
 
@@ -337,7 +325,7 @@ export default class EmacsTextEditorPlugin extends Plugin {
 			id: 'capitalize-word',
 			name: 'Capitalize word',
 			editorCallback: async (editor: Editor, _: MarkdownView) => {
-				transformWordAtCursor(editor, capitalizeOneWord);
+				this.transformWordAtCursor(editor, capitalizeOneWord);
 			}
 		});
 
@@ -345,7 +333,7 @@ export default class EmacsTextEditorPlugin extends Plugin {
 			id: 'upcase-region',
 			name: 'Upcase region',
 			editorCallback: async (editor: Editor, _: MarkdownView) => {
-				transformSelection(editor, word => word.toUpperCase());
+				this.transformSelection(editor, word => word.toUpperCase());
 			}
 		});
 
@@ -353,7 +341,7 @@ export default class EmacsTextEditorPlugin extends Plugin {
 			id: 'downcase-region',
 			name: 'Downcase region',
 			editorCallback: async (editor: Editor, _: MarkdownView) => {
-				transformSelection(editor, word => word.toLowerCase());
+				this.transformSelection(editor, word => word.toLowerCase());
 			}
 		});
 
@@ -361,7 +349,7 @@ export default class EmacsTextEditorPlugin extends Plugin {
 			id: 'capitalize-region',
 			name: 'Capitalize region',
 			editorCallback: async (editor: Editor, _: MarkdownView) => {
-				transformSelection(editor, capitalizeWords);
+				this.transformSelection(editor, capitalizeWords);
 			}
 		});
 
@@ -370,7 +358,7 @@ export default class EmacsTextEditorPlugin extends Plugin {
 			name: 'Upcase dwim',
 			hotkeys: [{ modifiers: ['Alt'], key: 'u' }],
 			editorCallback: async (editor: Editor, _: MarkdownView) => {
-				transformDWIM(editor, word => word.toUpperCase());
+				this.transformDWIM(editor, word => word.toUpperCase());
 			}
 		});
 
@@ -379,7 +367,7 @@ export default class EmacsTextEditorPlugin extends Plugin {
 			name: 'Downcase dwim',
 			hotkeys: [{ modifiers: ['Alt'], key: 'l' }],
 			editorCallback: async (editor: Editor, _: MarkdownView) => {
-				transformDWIM(editor, word => word.toLowerCase());
+				this.transformDWIM(editor, word => word.toLowerCase());
 			}
 		});
 
@@ -388,7 +376,7 @@ export default class EmacsTextEditorPlugin extends Plugin {
 			name: 'Capitalize dwim',
 			hotkeys: [{ modifiers: ['Alt'], key: 'c' }],
 			editorCallback: async (editor: Editor, _: MarkdownView) => {
-				transformDWIM(editor, capitalizeOneWord, capitalizeWords);
+				this.transformDWIM(editor, capitalizeOneWord, capitalizeWords);
 			}
 		});
 	}
@@ -545,12 +533,76 @@ export default class EmacsTextEditorPlugin extends Plugin {
 		const newPos = editor.offsetToPos(nextParagraphOffset);
 		editor.setCursor(newPos);
 	}
+
+	transformWordAtCursor(
+		editor: Editor,
+		transform: (word: string) => string
+	) {
+		const cursor = editor.getCursor();
+		const line = editor.getLine(cursor.line);
+		let ch = cursor.ch;
+
+		// Find word boundaries
+		while (ch < line.length && !/\w/.test(line[ch])) {
+			ch++;
+		}
+		const start = ch;
+		while (ch < line.length && /\w/.test(line[ch])) {
+			ch++;
+		}
+		const end = ch;
+
+		const word = line.substring(start, end);
+		const newWord = transform(word);
+		const range = {
+			from: { line: cursor.line, ch: start },
+			to: { line: cursor.line, ch: end }
+		};
+		editor.replaceRange(newWord, range.from, range.to);
+		editor.setCursor(cursor.line, end);
+	}
+
+	transformSelection(
+		editor: Editor,
+		transform: (word: string) => string
+	) {
+		const selection = editor.getSelection();
+		if (selection) {
+			const transformedSelection = transform(selection);
+			editor.replaceSelection(transformedSelection);
+		}
+	}
+
+	transformDWIM(
+		editor: Editor,
+		transformOneWord: (word: string) => string,
+		transformWords?: (text: string) => string
+	) {
+		if (editor.getSelection()) {
+			this.transformSelection(editor, transformWords ? transformWords : transformOneWord);
+		} else {
+			this.transformWordAtCursor(editor, transformOneWord);
+		}
+	};
 }
 
-const capitalizeOneWord = (word: string): string => 
-	word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+function isEventInterruptSelection(e: KeyboardEvent): boolean {
+	let withKeyModifier = e.ctrlKey || e.altKey;
+	return (
+		e.code == "Backspace" ||
+		e.code == "Delete" ||
+		(Boolean(e.code.match(/^Key[A-Z]$/)) && !withKeyModifier) ||
+		(Boolean(e.code.match(/^Digit[0-9]$/)) && !withKeyModifier) ||
+		(Boolean(e.code.match(/^Numpad[0-9]$/)) && !withKeyModifier) ||
+		(insertableSpecialKeys.includes(e.code) && !withKeyModifier)
+	);
+}
 
-const capitalizeWords = (selection: string): string => {
+function capitalizeOneWord(word: string): string {
+	return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+}
+
+function capitalizeWords(selection: string): string {
 	const words = selection.split(/\b/);
 	const capitalizedWords = words.map(word => {
 		if (/\w/.test(word)) {
@@ -560,54 +612,3 @@ const capitalizeWords = (selection: string): string => {
 	});
 	return capitalizedWords.join('');
 }
-
-const transformWordAtCursor = (
-	editor: Editor,
-	transform: (word: string) => string
-) => {
-	const cursor = editor.getCursor();
-	const line = editor.getLine(cursor.line);
-	let ch = cursor.ch;
-
-	// Find word boundaries
-	while (ch < line.length && !/\w/.test(line[ch])) {
-		ch++;
-	}
-	const start = ch;
-	while (ch < line.length && /\w/.test(line[ch])) {
-		ch++;
-	}
-	const end = ch;
-	
-	const word = line.substring(start, end);
-	const newWord = transform(word);
-	const range = {
-		from: { line: cursor.line, ch: start },
-		to: { line: cursor.line, ch: end }
-	};
-	editor.replaceRange(newWord, range.from, range.to);
-	editor.setCursor(cursor.line, end);
-};
-
-const transformSelection = (
-	editor: Editor,
-	transform: (word: string) => string
-) => {
-	const selection = editor.getSelection();
-	if (selection) {
-		const transformedSelection = transform(selection);
-		editor.replaceSelection(transformedSelection);
-	}
-};
-
-const transformDWIM = (
-	editor: Editor,
-	transformOneWord: (word: string) => string,
-	transformWords?: (text: string) => string
-) => {
-	if (editor.getSelection()) {
-		transformSelection(editor, transformWords ? transformWords : transformOneWord);
-	} else {
-		transformWordAtCursor(editor, transformOneWord);
-	}
-};
