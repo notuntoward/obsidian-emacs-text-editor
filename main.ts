@@ -1,4 +1,16 @@
-import { Editor, EditorPosition, Plugin, MarkdownView } from "obsidian";
+import { Editor, EditorPosition, Plugin, MarkdownView, PluginSettingTab, Setting, App } from "obsidian";
+
+interface EmacsKeyRepeatSettings {
+	enableKeyRepeat: boolean;
+	keyRepeatDelay: number;
+	keyRepeatInterval: number;
+}
+
+const DEFAULT_SETTINGS: EmacsKeyRepeatSettings = {
+	enableKeyRepeat: true,
+	keyRepeatDelay: 500, // Initial delay before repeat starts (ms)
+	keyRepeatInterval: 50, // Interval between repeats (ms)
+};
 
 enum Direction {
 	Forward,
@@ -25,27 +37,55 @@ const insertableSpecialKeys = [
 ];
 
 export default class EmacsTextEditorPlugin extends Plugin {
+	settings: EmacsKeyRepeatSettings;
 	pluginTriggerSelection = false;
 	disableSelectionWhenPossible = false;
 
-	onload() {
+	private currentRepeatTimeouts: Map<string, { timeoutId: number; intervalId?: number }> = new Map();
+
+    // async so can wait for settings before full init
+	async onload() {
 		console.log("loading plugin: Emacs text editor");
 
-		document.addEventListener("keydown", (e) => {
+		await this.loadSettings();
+		this.addSettingTab(new EmacsKeyRepeatSettingTab(this.app, this));
+
+                // DOM so timer events + residual listeners cleared if unload plugin
+		this.registerDomEvent(document, "keydown", (e) => {
 			if (isEventInterruptSelection(e)) {
 				this.disableSelectionWhenPossible = true;
 				this.pluginTriggerSelection = false;
 			}
+
+			if (this.settings.enableKeyRepeat) {
+				this.handleKeyRepeat(e);
+			}
 		});
+
+        // Things that stop repeat
+
+        // stop holding a key down
+		this.registerDomEvent(document, "keyup", (e: KeyboardEvent) => {
+			const keyId = this.getKeyId(e);
+			this.stopKeyRepeat(keyId);
+		});
+
+		// change window focus
+		this.registerDomEvent(window, "blur", () => {
+			this.stopAllKeyRepeats();
+		});
+
+		// defocus current editor
+		this.registerEvent(this.app.workspace.on('active-leaf-change', () => {
+			this.stopAllKeyRepeats();
+		}));
 
 		this.addCommand({
 			id: "forward-char",
 			name: "Forward char",
 			hotkeys: [{ modifiers: ['Ctrl'], key: 'f' }],
 			editorCallback: (editor: Editor, _: MarkdownView) => {
-				this.withSelectionUpdate(editor, () => {
-					editor.exec("goRight");
-				});
+				this.moveForwardOneChar(editor);
 			},
 		});
 
@@ -54,9 +94,7 @@ export default class EmacsTextEditorPlugin extends Plugin {
 			name: "Backward char",
 			hotkeys: [{ modifiers: ['Ctrl'], key: 'b' }],
 			editorCallback: (editor: Editor, _: MarkdownView) => {
-				this.withSelectionUpdate(editor, () => {
-					editor.exec("goLeft");
-				});
+				this.moveBackOneChar(editor);
 			},
 		});
 
@@ -65,9 +103,7 @@ export default class EmacsTextEditorPlugin extends Plugin {
 			name: "Next line",
 			hotkeys: [{ modifiers: ['Ctrl'], key: 'n' }],
 			editorCallback: (editor: Editor, _: MarkdownView) => {
-				this.withSelectionUpdate(editor, () => {
-					editor.exec("goDown");
-				});
+				this.moveNextLine(editor);
 			},
 		});
 
@@ -76,9 +112,7 @@ export default class EmacsTextEditorPlugin extends Plugin {
 			name: "Previous line",
 			hotkeys: [{ modifiers: ['Ctrl'], key: 'p' }],
 			editorCallback: (editor: Editor, _: MarkdownView) => {
-				this.withSelectionUpdate(editor, () => {
-					editor.exec("goUp");
-				});
+				this.movePreviousLine(editor);
 			},
 		});
 
@@ -87,9 +121,7 @@ export default class EmacsTextEditorPlugin extends Plugin {
 			name: "Forward word",
 			hotkeys: [{ modifiers: ['Alt'], key: 'f' }],
 			editorCallback: (editor: Editor, _: MarkdownView) => {
-				this.withSelectionUpdate(editor, () => {
-					editor.exec("goWordRight");
-				});
+				this.moveForwardOneWord(editor);
 			},
 		});
 
@@ -98,9 +130,7 @@ export default class EmacsTextEditorPlugin extends Plugin {
 			name: "Backward word",
 			hotkeys: [{ modifiers: ['Alt'], key: 'b' }],
 			editorCallback: (editor: Editor, _: MarkdownView) => {
-				this.withSelectionUpdate(editor, () => {
-					editor.exec("goWordLeft");
-				});
+				this.moveBackOneWord(editor);
 			},
 		});
 
@@ -413,6 +443,160 @@ export default class EmacsTextEditorPlugin extends Plugin {
 
 	onunload() {
 		console.log("unloading plugin: Emacs text editor");
+		this.stopAllKeyRepeats();
+	}
+
+	async loadSettings() {
+		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+		this.settings.keyRepeatDelay = Math.max(25, Math.min(2000, this.settings.keyRepeatDelay));
+		this.settings.keyRepeatInterval = Math.max(10, Math.min(1000, this.settings.keyRepeatInterval));
+	}
+
+	async saveSettings() {
+		await this.saveData(this.settings);
+	}
+
+	handleKeyRepeat(keyEvent: KeyboardEvent) {
+		if (!this.isInActiveEditor()) {
+			return;
+		}
+
+		const keyId = this.getKeyId(keyEvent);
+		const keyMoveFunc = this.getKeyMoveFunc(keyEvent);
+
+		if (keyMoveFunc) {
+			keyEvent.preventDefault();
+			keyEvent.stopPropagation();
+
+			if (this.currentRepeatTimeouts.has(keyId)) {
+				return;
+			}
+
+			try {
+				keyMoveFunc();  // 1st key movement
+			} catch (error) {
+				console.error('Key move function error:', error);
+				return;
+			}
+
+			// Following delay after 1st key movement, do repeated key movements at intervals
+			const timeoutId = window.setTimeout(() => {
+				const intervalId = window.setInterval(() => {
+					if (this.isInActiveEditor() && this.currentRepeatTimeouts.has(keyId)) {
+						// Still in editor and still repeating
+						try {
+							keyMoveFunc();
+						} catch (error) {
+							console.error('Key repeat interval error:', error);
+							this.stopKeyRepeat(keyId);
+						}
+					} else {
+						this.stopKeyRepeat(keyId);
+					}
+				}, this.settings.keyRepeatInterval);
+
+				const repeatState = this.currentRepeatTimeouts.get(keyId);
+				if (repeatState) {
+					repeatState.intervalId = intervalId;
+				}
+			}, this.settings.keyRepeatDelay);
+
+			this.currentRepeatTimeouts.set(keyId, { timeoutId });
+		}
+	}
+
+	isInActiveEditor(): boolean {
+		const markdownView = this.app.workspace.getActiveViewOfType?.(MarkdownView);
+		return !!(markdownView && markdownView.editor);
+	}
+
+	getKeyId(e: KeyboardEvent): string {
+		const modifiers = [];
+		if (e.ctrlKey) modifiers.push('ctrl');
+		if (e.altKey) modifiers.push('alt');
+		if (e.shiftKey) modifiers.push('shift');
+		if (e.metaKey) modifiers.push('meta');
+		return [...modifiers, e.key.toLowerCase()].join('+');
+	}
+
+	getKeyMoveFunc(e: KeyboardEvent): (() => void) | null {
+		const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
+		if (!activeView) return null;
+
+		const editor = activeView.editor;
+
+		if (e.ctrlKey && !e.altKey && !e.shiftKey && !e.metaKey) {
+			switch (e.key.toLowerCase()) {
+				case 'f': return () => this.moveForwardOneChar(editor);
+				case 'b': return () => this.moveBackOneChar(editor);
+				case 'n': return () => this.moveNextLine(editor);
+				case 'p': return () => this.movePreviousLine(editor);
+			}
+		}
+		if (e.altKey && !e.ctrlKey && !e.shiftKey && !e.metaKey) {
+			switch (e.key.toLowerCase()) {
+				case 'f': return () => this.moveForwardOneWord(editor);
+				case 'b': return () => this.moveBackOneWord(editor);
+			}
+		}
+		return null;
+	}
+
+	stopKeyRepeat(keyId: string) {
+		const timeout = this.currentRepeatTimeouts.get(keyId);
+		if (timeout) {
+			if (timeout.timeoutId) {
+				clearTimeout(timeout.timeoutId);
+			}
+			if (timeout.intervalId) {
+				clearInterval(timeout.intervalId);
+			}
+			this.currentRepeatTimeouts.delete(keyId);
+		}
+	}
+
+	stopAllKeyRepeats() {
+		this.currentRepeatTimeouts.forEach(({ timeoutId, intervalId }) => {
+			if (timeoutId) clearTimeout(timeoutId);
+			if (intervalId) clearInterval(intervalId);
+		});
+		this.currentRepeatTimeouts.clear();
+	}
+
+	moveForwardOneChar(editor: Editor) {
+		this.withSelectionUpdate(editor, () => {
+			editor.exec("goRight");
+		});
+	}
+
+	moveBackOneChar(editor: Editor) {
+		this.withSelectionUpdate(editor, () => {
+			editor.exec("goLeft");
+		});
+	}
+
+	moveNextLine(editor: Editor) {
+		this.withSelectionUpdate(editor, () => {
+			editor.exec("goDown");
+		});
+	}
+
+	movePreviousLine(editor: Editor) {
+		this.withSelectionUpdate(editor, () => {
+			editor.exec("goUp");
+		});
+	}
+
+	moveForwardOneWord(editor: Editor) {
+		this.withSelectionUpdate(editor, () => {
+			editor.exec("goWordRight");
+		});
+	}
+
+	moveBackOneWord(editor: Editor) {
+		this.withSelectionUpdate(editor, () => {
+			editor.exec("goWordLeft");
+		});
 	}
 
 	disableSelection(editor: Editor) {
@@ -616,7 +800,96 @@ export default class EmacsTextEditorPlugin extends Plugin {
 		} else {
 			this.transformWordAtCursor(editor, transformOneWord);
 		}
-	};
+	}
+}
+
+class EmacsKeyRepeatSettingTab extends PluginSettingTab {
+	plugin: EmacsTextEditorPlugin;
+
+	constructor(app: App, plugin: EmacsTextEditorPlugin) {
+		super(app, plugin);
+		this.plugin = plugin;
+	}
+
+	display(): void {
+		const { containerEl } = this;
+		containerEl.empty();
+
+		containerEl.createEl('h2', { text: 'Emacs Key Repeat Settings' });
+
+		new Setting(containerEl)
+			.setName('Enable key repeat')
+			.setDesc('Allow cursor movement keys to repeat when held down')
+			.addToggle(toggle => toggle
+				.setValue(this.plugin.settings.enableKeyRepeat)
+				.onChange(async (value) => {
+					this.plugin.settings.enableKeyRepeat = value;
+					await this.plugin.saveSettings();
+				})
+			);
+
+		new Setting(containerEl)
+			.setName('Initial delay')
+			.setDesc(`Time before key repeat starts (25-1000ms). Current: ${this.plugin.settings.keyRepeatDelay}ms`)
+			.addSlider(slider => slider
+				.setLimits(25, 1000, 50)
+				.setValue(this.plugin.settings.keyRepeatDelay)
+				.setDynamicTooltip()
+				.onChange(async (value) => {
+					this.plugin.settings.keyRepeatDelay = value;
+					await this.plugin.saveSettings();
+					// Update description
+					slider.sliderEl.parentElement?.parentElement
+						?.querySelector('.setting-item-description')
+						?.setText(`Time before key repeat starts (0-1000ms). Current: ${value}ms`);
+				})
+			);
+
+		new Setting(containerEl)
+			.setName('Repeat interval')
+			.setDesc(`Time between repeats (10-1000ms). Current: ${this.plugin.settings.keyRepeatInterval}ms`)
+			.addSlider(slider => slider
+				.setLimits(10, 1000, 5)
+				.setValue(this.plugin.settings.keyRepeatInterval)
+				.setDynamicTooltip()
+				.onChange(async (value) => {
+					this.plugin.settings.keyRepeatInterval = value;
+					await this.plugin.saveSettings();
+					// Update description 
+					slider.sliderEl.parentElement?.parentElement
+						?.querySelector('.setting-item-description')
+						?.setText(`Time between repeats (10-1000ms). Current: ${value}ms`);
+				})
+			);
+
+		containerEl.createEl('h3', { text: 'Quick Presets' });
+		const presetContainer = containerEl.createEl('div', { cls: 'setting-item' });
+		const buttonContainer = presetContainer.createEl('div', { cls: 'setting-item-control' });
+
+		buttonContainer.createEl('button', { text: 'Slow' })
+			.addEventListener('click', async () => {
+				this.plugin.settings.keyRepeatDelay = 750;
+				this.plugin.settings.keyRepeatInterval = 100;
+				await this.plugin.saveSettings();
+				this.display();
+			});
+
+		buttonContainer.createEl('button', { text: 'Medium' })
+			.addEventListener('click', async () => {
+				this.plugin.settings.keyRepeatDelay = 500;
+				this.plugin.settings.keyRepeatInterval = 50;
+				await this.plugin.saveSettings();
+				this.display();
+			});
+
+		buttonContainer.createEl('button', { text: 'Fast' })
+			.addEventListener('click', async () => {
+				this.plugin.settings.keyRepeatDelay = 25;
+				this.plugin.settings.keyRepeatInterval = 25;
+				await this.plugin.saveSettings();
+				this.display();
+			});
+	}
 }
 
 function isEventInterruptSelection(e: KeyboardEvent): boolean {

@@ -67,6 +67,17 @@ make uninstall
 | Alt + c                 | Capitalize dwim            | Capitalize selection if selection exists, else word |
 | Alt + x                 | Open command palette       | Open command palette |
 
+## Key Repeat
+
+When enabled in Settings → Community plugins → Emacs text editor, movement keys repeat when held down, just like arrow keys:
+
+- **Character movement:** Ctrl+F, Ctrl+B
+- **Line movement:** Ctrl+N, Ctrl+P  
+- **Word movement:** Alt+F, Alt+B
+
+In the Settings, you can also adjust the initial delay, repeat interval, or use quick presets (Slow/Medium/Fast).  
+
+The movement key repeat mechanism works around Obsidian API limitations which prevent control key repeats.  Unlike the arrow key repeat, it is separate from your OS keyboard repeat controls; changing movement key repeat timing with these settings affects only Obsidian repeat behavior.
 
 ## Known issues
 
@@ -74,5 +85,3 @@ make uninstall
 2. Conflicts with existing hotkeys. Solution: use additional plugin for custom bindings, for example https://github.com/tgrosinger/leader-hotkeys-obsidian
 3. Absent support of "kill-ring". Solution: use plugin https://github.com/Karakaz/obsidian-paste-from-history with `Alt + y` keybinding
 4. Absent support of scroll-up/scroll-down commands. [Solution is not found](https://github.com/Klojer/obsidian-emacs-text-editor/issues/1)
-5. Absent support of holding shortcuts. [Solution is not found](https://github.com/Klojer/obsidian-emacs-text-editor/issues/2)
-
