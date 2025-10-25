@@ -74,6 +74,7 @@ When enabled in Settings → Community plugins → Emacs text editor, movement k
 - **Character movement:** Ctrl+F, Ctrl+B
 - **Line movement:** Ctrl+N, Ctrl+P  
 - **Word movement:** Alt+F, Alt+B
+  **Character, Word Deletion**: Ctrl+D, Alt+D
 
 In the Settings, you can also adjust the initial delay, repeat interval, or use quick presets (Slow/Medium/Fast).  
 
