@@ -210,26 +210,21 @@ export default class EmacsTextEditorPlugin extends Plugin {
 			id: "delete-char",
 			name: "Delete char",
 			hotkeys: [{ modifiers: ['Ctrl'], key: 'd' }],
-			editorCallback: (editor: Editor, _: MarkdownView) => {
-				this.disableSelection(editor);
-
-				this.withDeleteInText(editor, () => {
-					editor.exec("goRight");
-				});
-			},
+		        editorCallback: (editor: Editor, _: MarkdownView) => {
+                            this.deleteOneChar(editor);
+		        },
 		});
 
 		this.addCommand({
 			id: "kill-word",
 			name: "Kill word",
 			hotkeys: [{ modifiers: ['Alt'], key: 'd' }],
-			editorCallback: (editor: Editor, _: MarkdownView) => {
-				this.withDeleteInText(editor, () => {
-					editor.exec("goWordRight");
-				});
+		        editorCallback: (editor: Editor, _: MarkdownView) => {
+                            this.killOneWord(editor);
+
 			},
 		});
-
+            
 		this.addCommand({
 			id: "backward-kill-word",
 			name: "Backward kill word",
@@ -530,13 +525,15 @@ export default class EmacsTextEditorPlugin extends Plugin {
 				case 'f': return () => this.moveForwardOneChar(editor);
 				case 'b': return () => this.moveBackOneChar(editor);
 				case 'n': return () => this.moveNextLine(editor);
-				case 'p': return () => this.movePreviousLine(editor);
+			    case 'p': return () => this.movePreviousLine(editor);
+			    case 'd': return () => this.deleteOneChar(editor);
 			}
 		}
 		if (e.altKey && !e.ctrlKey && !e.shiftKey && !e.metaKey) {
 			switch (e.key.toLowerCase()) {
 				case 'f': return () => this.moveForwardOneWord(editor);
 				case 'b': return () => this.moveBackOneWord(editor);
+				case 'd': return () => this.killOneWord(editor);
 			}
 		}
 		return null;
@@ -566,6 +563,18 @@ export default class EmacsTextEditorPlugin extends Plugin {
 	moveForwardOneChar(editor: Editor) {
 		this.withSelectionUpdate(editor, () => {
 			editor.exec("goRight");
+		});
+	}
+
+	deleteOneChar(editor: Editor) {
+		this.withDeleteInText(editor, () => {
+		editor.exec("goRight");
+		});
+	}
+
+    killOneWord(editor: Editor) {
+	    this.withDeleteInText(editor, () => {
+		editor.exec("goWordRight");
 		});
 	}
 

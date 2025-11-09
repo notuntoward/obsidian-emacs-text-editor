@@ -69,15 +69,14 @@ make uninstall
 
 ## Key Repeat
 
-When enabled in Settings → Community plugins → Emacs text editor, movement keys repeat when held down, just like arrow keys:
+When enabled in Settings → Community plugins → Emacs text editor, the following additional hotkeys will repeat when held down, as in emacs:
 
 - **Character movement:** Ctrl+F, Ctrl+B
 - **Line movement:** Ctrl+N, Ctrl+P  
 - **Word movement:** Alt+F, Alt+B
+  **Character, Word Deletion**: Ctrl+D, Alt+D
 
-In the Settings, you can also adjust the initial delay, repeat interval, or use quick presets (Slow/Medium/Fast).  
-
-The movement key repeat mechanism works around Obsidian API limitations which prevent control key repeats.  Unlike the arrow key repeat, it is separate from your OS keyboard repeat controls; changing movement key repeat timing with these settings affects only Obsidian repeat behavior.
+In the Settings, you can also adjust the initial repeat delay or interval, or use quick presets (Slow/Medium/Fast).  This repeat mechanism works around Obsidian API limitations which prevent changing ctrl or alt key repeats.  It is separate from your OS keyboard repeat controls; changing repeat timing here affects only Obsidian hotkey hotkey behavior.
 
 ## Known issues
 
