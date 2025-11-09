@@ -43,14 +43,14 @@ export default class EmacsTextEditorPlugin extends Plugin {
 
 	private currentRepeatTimeouts: Map<string, { timeoutId: number; intervalId?: number }> = new Map();
 
-    // async so can wait for settings before full init
+	// async so can wait for settings before full init
 	async onload() {
 		console.log("loading plugin: Emacs text editor");
 
 		await this.loadSettings();
 		this.addSettingTab(new EmacsKeyRepeatSettingTab(this.app, this));
 
-                // DOM so timer events + residual listeners cleared if unload plugin
+		// DOM so timer events + residual listeners cleared if unload plugin
 		this.registerDomEvent(document, "keydown", (e) => {
 			if (isEventInterruptSelection(e)) {
 				this.disableSelectionWhenPossible = true;
@@ -62,9 +62,9 @@ export default class EmacsTextEditorPlugin extends Plugin {
 			}
 		});
 
-        // Things that stop repeat
+		// Things that stop repeat
 
-        // stop holding a key down
+		// stop holding a key down
 		this.registerDomEvent(document, "keyup", (e: KeyboardEvent) => {
 			const keyId = this.getKeyId(e);
 			this.stopKeyRepeat(keyId);
@@ -210,21 +210,21 @@ export default class EmacsTextEditorPlugin extends Plugin {
 			id: "delete-char",
 			name: "Delete char",
 			hotkeys: [{ modifiers: ['Ctrl'], key: 'd' }],
-		        editorCallback: (editor: Editor, _: MarkdownView) => {
-                            this.deleteOneChar(editor);
-		        },
+			editorCallback: (editor: Editor, _: MarkdownView) => {
+				this.deleteOneChar(editor);
+			},
 		});
 
 		this.addCommand({
 			id: "kill-word",
 			name: "Kill word",
 			hotkeys: [{ modifiers: ['Alt'], key: 'd' }],
-		        editorCallback: (editor: Editor, _: MarkdownView) => {
-                            this.killOneWord(editor);
+			editorCallback: (editor: Editor, _: MarkdownView) => {
+				this.killOneWord(editor);
 
 			},
 		});
-            
+
 		this.addCommand({
 			id: "backward-kill-word",
 			name: "Backward kill word",
@@ -525,8 +525,8 @@ export default class EmacsTextEditorPlugin extends Plugin {
 				case 'f': return () => this.moveForwardOneChar(editor);
 				case 'b': return () => this.moveBackOneChar(editor);
 				case 'n': return () => this.moveNextLine(editor);
-			    case 'p': return () => this.movePreviousLine(editor);
-			    case 'd': return () => this.deleteOneChar(editor);
+				case 'p': return () => this.movePreviousLine(editor);
+				case 'd': return () => this.deleteOneChar(editor);
 			}
 		}
 		if (e.altKey && !e.ctrlKey && !e.shiftKey && !e.metaKey) {
@@ -568,13 +568,13 @@ export default class EmacsTextEditorPlugin extends Plugin {
 
 	deleteOneChar(editor: Editor) {
 		this.withDeleteInText(editor, () => {
-		editor.exec("goRight");
+			editor.exec("goRight");
 		});
 	}
 
-    killOneWord(editor: Editor) {
-	    this.withDeleteInText(editor, () => {
-		editor.exec("goWordRight");
+	killOneWord(editor: Editor) {
+		this.withDeleteInText(editor, () => {
+			editor.exec("goWordRight");
 		});
 	}
 
