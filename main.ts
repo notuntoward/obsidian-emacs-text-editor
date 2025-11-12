@@ -567,9 +567,22 @@ export default class EmacsTextEditorPlugin extends Plugin {
 	}
 
 	deleteOneChar(editor: Editor) {
-		this.withDeleteInText(editor, () => {
-			editor.exec("goRight");
-		});
+		const cursor = editor.getCursor();
+		const line = editor.getLine(cursor.line);
+		
+		if (cursor.ch < line.length) {
+			// delete the character - don't touch clipboard
+			editor.replaceRange('', cursor, {
+				line: cursor.line,
+				ch: cursor.ch + 1
+			});
+		} else if (cursor.line < editor.lineCount() - 1) {
+			// Delete newline by joining lines
+			editor.replaceRange('', cursor, {
+				line: cursor.line + 1,
+				ch: 0
+			});
+		}
 	}
 
 	killOneWord(editor: Editor) {
