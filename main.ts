@@ -608,7 +608,11 @@ export default class EmacsTextEditorPlugin extends Plugin {
 		// moveToLineBoundary / forward-char / backward-char / word moves.
 		const eventName = forward ? "emacs.moveDown" : "emacs.moveUp";
 		const selection = view.state.selection.main;
-		const headCursor = EditorSelection.cursor(selection.head, selection.assoc);
+		// Carry the goal column in and out so repeated vertical moves keep
+		// their horizontal position memory (CM6 stores it on the range).
+		const headCursor = EditorSelection.cursor(
+			selection.head, selection.assoc, undefined, selection.goalColumn,
+		);
 		const newRange = view.moveVertically(headCursor, forward);
 
 		if (this.disableSelectionWhenPossible) {
@@ -621,11 +625,11 @@ export default class EmacsTextEditorPlugin extends Plugin {
 		if (currentSelectionStart) {
 			const anchorOffset = editor.posToOffset(currentSelectionStart);
 			newSelection = EditorSelection.create([
-				EditorSelection.range(anchorOffset, newRange.head, newRange.assoc)
+				EditorSelection.range(anchorOffset, newRange.head, newRange.goalColumn)
 			]);
 		} else {
 			newSelection = EditorSelection.create([
-				EditorSelection.cursor(newRange.head, newRange.assoc)
+				EditorSelection.cursor(newRange.head, newRange.assoc, undefined, newRange.goalColumn)
 			]);
 		}
 
