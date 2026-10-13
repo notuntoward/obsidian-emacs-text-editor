@@ -312,7 +312,9 @@ export default class EmacsTextEditorPlugin extends Plugin {
 			name: "Yank",
 			hotkeys: DEFAULT_COMMAND_HOTKEYS['yank'],
 			editorCallback: async (editor: Editor, _: MarkdownView) => {
-				const clipboardContent = await navigator.clipboard.readText();
+				// activeWindow, not the main window: navigator.clipboard rejects ("Document is not
+				// focused") when called on a window other than the focused one, e.g. a pop-out.
+				const clipboardContent = await activeWindow.navigator.clipboard.readText();
 				const cursor = editor.getCursor();
 
 				if (!this.getCurrentSelectionStart(editor)) {
@@ -326,7 +328,7 @@ export default class EmacsTextEditorPlugin extends Plugin {
 					cursor.line,
 					cursor.ch + clipboardContent.length,
 				);
-				document.dispatchEvent(new ClipboardEvent("paste"));
+				activeDocument.dispatchEvent(new ClipboardEvent("paste"));
 			},
 		});
 
@@ -1073,13 +1075,13 @@ export default class EmacsTextEditorPlugin extends Plugin {
 			return;
 		}
 
-		navigator.clipboard.writeText(editor.getSelection());
+		void activeWindow.navigator.clipboard.writeText(editor.getSelection());
 
 		if (mode == CopyCut.Copy) {
-			document.dispatchEvent(new ClipboardEvent("copy"));
+			activeDocument.dispatchEvent(new ClipboardEvent("copy"));
 		} else if (mode == CopyCut.Cut) {
 			this.deleteSelectionWithAnnotation(editor, userEventName, view);
-			document.dispatchEvent(new ClipboardEvent("cut"));
+			activeDocument.dispatchEvent(new ClipboardEvent("cut"));
 		}
 
 		this.disableSelection(editor);
