@@ -575,7 +575,10 @@ export default class EmacsTextEditorPlugin extends Plugin {
 		if (currentSelectionStart) {
 			const anchorOffset = editor.posToOffset(currentSelectionStart);
 			newSelection = EditorSelection.create([
-				EditorSelection.range(anchorOffset, newRange.head, newRange.assoc)
+				// Third arg of range() is goalColumn, not assoc. Passing assoc (+/-1)
+				// here stored a bogus goal column of -1, so a following next/previous
+				// line jumped to the line's left edge instead of keeping the column.
+				EditorSelection.range(anchorOffset, newRange.head)
 			]);
 		} else {
 			newSelection = EditorSelection.create([
