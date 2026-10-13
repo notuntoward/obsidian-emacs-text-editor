@@ -8,6 +8,7 @@ import {
 	literalKeyFromEvent,
 	normalizeHotkey,
 } from "./keys";
+import { moveVerticallyUnstuck } from "./vertical";
 
 // Regex constants for consistent pattern matching
 const WORD_CHAR_REGEX = /[\p{L}\p{N}_]/u;
@@ -94,7 +95,8 @@ export default class EmacsTextEditorPlugin extends Plugin {
 	private markPosition: EditorPosition | undefined;
 	disableSelectionWhenPossible = false;
 
-	private currentRepeatTimeouts: Map<string, { timeoutId: number; intervalId?: number }> = new Map();
+	private currentRepeatTimeouts: Map<string, { timeoutId: number; intervalId?: number; win: Window }> = new Map();
+	private hookedWindows: WeakSet<Window> = new WeakSet();
 	private repeatableMoveHandlers: Map<string, (editor: Editor, view?: EditorView) => void> | null = null;
 	private composedRescueCommands: Map<string, string> | null = null;
 
@@ -105,40 +107,18 @@ export default class EmacsTextEditorPlugin extends Plugin {
 		await this.loadSettings();
 		this.addSettingTab(new EmacsKeyRepeatSettingTab(this.app, this));
 
-		// DOM so timer events + residual listeners cleared if unload plugin
-		this.registerDomEvent(document, "keydown", (e) => {
-			if (isEventInterruptSelection(e)) {
-				this.disableSelectionWhenPossible = true;
-				this.markPosition = undefined;
-			}
-
-			if (this.settings.enableKeyRepeat) {
-				this.handleKeyRepeat(e);
-			}
+		// Pop-out windows have their own document/window, so the key, repeat-stop and
+		// mark-cancel listeners must be attached to every window, not just the main one.
+		this.hookWindow(window);
+		this.app.workspace.onLayoutReady(() => {
+			this.app.workspace.iterateAllLeaves((leaf) => {
+				const win = leaf.view.containerEl?.ownerDocument?.defaultView;
+				if (win) this.hookWindow(win);
+			});
 		});
-
-		// macOS: Option (Alt) chords arrive composed into glyphs (Alt+F ->
-		// "ƒ"), so Obsidian's hotkey matcher never fires the plugin's Alt
-		// bindings and the glyph gets inserted instead. Rescue those events
-		// by matching the physical key. Registered after the key-repeat
-		// handler so repeatable chords are handled (and cancelled) there
-		// first.
-		this.registerDomEvent(document, "keydown", (e) => {
-			this.handleComposedKeyRescue(e);
-		});
-
-		// Things that stop repeat
-
-		// stop holding a key down
-		this.registerDomEvent(document, "keyup", () => {
-			this.stopAllKeyRepeats();
-		});
-
-		// change window focus
-		this.registerDomEvent(window, "blur", () => {
-			this.stopAllKeyRepeats();
-		});
-
+		this.registerEvent(this.app.workspace.on("window-open", (_workspaceWindow, win) => {
+			this.hookWindow(win);
+		}));
 		// defocus current editor
 		this.registerEvent(this.app.workspace.on('active-leaf-change', () => {
 			this.stopAllKeyRepeats();
@@ -146,12 +126,6 @@ export default class EmacsTextEditorPlugin extends Plugin {
 			// rescue map was built.
 			this.composedRescueCommands = null;
 		}));
-
-		// Mouse click cancels mark mode (same as keyboard-quit)
-		this.registerDomEvent(document, "mousedown", () => {
-			this.markPosition = undefined;
-			this.disableSelectionWhenPossible = false;
-		});
 
 		this.addCommand({
 			id: "forward-char",
@@ -612,11 +586,10 @@ export default class EmacsTextEditorPlugin extends Plugin {
 		const eventName = forward ? "emacs.moveDown" : "emacs.moveUp";
 		const selection = view.state.selection.main;
 		// Carry the goal column in and out so repeated vertical moves keep
-		// their horizontal position memory (CM6 stores it on the range).
-		const headCursor = EditorSelection.cursor(
-			selection.head, selection.assoc, undefined, selection.goalColumn,
-		);
-		const newRange = view.moveVertically(headCursor, forward);
+		// their horizontal position memory (CM6 stores it on the range). The helper
+		// also escapes the soft-wrap-boundary stall where moveVertically returns the
+		// starting position (set-mark then repeated next-line from column 0).
+		const newRange = moveVerticallyUnstuck(view, selection, forward);
 
 		if (this.disableSelectionWhenPossible) {
 			this.disableSelection(editor);
@@ -667,8 +640,11 @@ export default class EmacsTextEditorPlugin extends Plugin {
 			}
 
 			// Following delay after 1st key movement, do repeated key movements at intervals
-			const timeoutId = window.setTimeout(() => {
-				const intervalId = window.setInterval(() => {
+			// Use the window the key was pressed in: timers in a background/hidden main window
+			// are throttled, and clear*() must be called on the same window as set*().
+			const win = (keyEvent.view as Window | null) ?? window;
+			const timeoutId = win.setTimeout(() => {
+				const intervalId = win.setInterval(() => {
 					if (this.isInActiveEditor() && this.currentRepeatTimeouts.has(keyId)) {
 						// Still in editor and still repeating
 						try {
@@ -688,7 +664,7 @@ export default class EmacsTextEditorPlugin extends Plugin {
 				}
 			}, this.settings.keyRepeatDelay);
 
-			this.currentRepeatTimeouts.set(keyId, { timeoutId });
+			this.currentRepeatTimeouts.set(keyId, { timeoutId, win });
 		}
 	}
 
@@ -824,23 +800,68 @@ export default class EmacsTextEditorPlugin extends Plugin {
 		return result;
 	}
 
+	hookWindow(win: Window) {
+		if (this.hookedWindows.has(win)) return;
+		this.hookedWindows.add(win);
+		const doc = win.document;
+
+		// DOM so timer events + residual listeners cleared if unload plugin
+		this.registerDomEvent(doc, "keydown", (e) => {
+			if (isEventInterruptSelection(e)) {
+				this.disableSelectionWhenPossible = true;
+				this.markPosition = undefined;
+			}
+
+			if (this.settings.enableKeyRepeat) {
+				this.handleKeyRepeat(e);
+			}
+		});
+
+		// macOS: Option (Alt) chords arrive composed into glyphs (Alt+F ->
+		// "ƒ"), so Obsidian's hotkey matcher never fires the plugin's Alt
+		// bindings and the glyph gets inserted instead. Rescue those events
+		// by matching the physical key. Registered after the key-repeat
+		// handler so repeatable chords are handled (and cancelled) there
+		// first.
+		this.registerDomEvent(doc, "keydown", (e) => {
+			this.handleComposedKeyRescue(e);
+		});
+
+		// Things that stop repeat
+
+		// stop holding a key down
+		this.registerDomEvent(doc, "keyup", () => {
+			this.stopAllKeyRepeats();
+		});
+
+		// change window focus
+		this.registerDomEvent(win, "blur", () => {
+			this.stopAllKeyRepeats();
+		});
+
+		// Mouse click cancels mark mode (same as keyboard-quit)
+		this.registerDomEvent(doc, "mousedown", () => {
+			this.markPosition = undefined;
+			this.disableSelectionWhenPossible = false;
+		});
+	}
 	stopKeyRepeat(keyId: string) {
 		const timeout = this.currentRepeatTimeouts.get(keyId);
 		if (timeout) {
 			if (timeout.timeoutId) {
-				clearTimeout(timeout.timeoutId);
+				timeout.win.clearTimeout(timeout.timeoutId);
 			}
 			if (timeout.intervalId) {
-				clearInterval(timeout.intervalId);
+				timeout.win.clearInterval(timeout.intervalId);
 			}
 			this.currentRepeatTimeouts.delete(keyId);
 		}
 	}
 
 	stopAllKeyRepeats() {
-		this.currentRepeatTimeouts.forEach(({ timeoutId, intervalId }) => {
-			if (timeoutId) clearTimeout(timeoutId);
-			if (intervalId) clearInterval(intervalId);
+		this.currentRepeatTimeouts.forEach(({ timeoutId, intervalId, win }) => {
+			if (timeoutId) win.clearTimeout(timeoutId);
+			if (intervalId) win.clearInterval(intervalId);
 		});
 		this.currentRepeatTimeouts.clear();
 	}
